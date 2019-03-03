@@ -11,9 +11,9 @@ class MigratorSpec extends FreeSpec
 
   "Validating migration data" - {
 
-    "should error when version contains duplicate version number" in {
+    "should return all duplicated version when any migration contains duplicate version" in {
       val mgs =
-        List("1.0.0", "1.0.0")
+        List("1.0.0", "1.0.0", "1.0.1", "1.2.0", "1.2.0")
           .map { version =>
             val mg = mock[Migration]
             when(mg.version).thenReturn(version)
@@ -25,7 +25,7 @@ class MigratorSpec extends FreeSpec
       }
 
       migrator.validateMigrations match {
-        case "1.0.0" :: Nil => assert(true)
+        case "1.0.0" :: "1.2.0" :: Nil => assert(true)
         case _ => assert(false)
       }
 
@@ -50,6 +50,5 @@ class MigratorSpec extends FreeSpec
       }
 
     }
-
   }
 }

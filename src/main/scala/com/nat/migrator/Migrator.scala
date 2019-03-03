@@ -12,6 +12,14 @@ trait Migrator {
     */
   def migrations: List[Migration]
 
+
+  /** Implement this methods to see which is the current version of database"
+    *
+    * @return
+    */
+  def currentVersion: Option[String]
+
+
   /**
     * This method is for validate migration on the following criterias
     *   - Duplicate version number
