@@ -17,14 +17,24 @@ trait Migrator {
     *   - Duplicate version number
     * @return
     */
-  def validateMigrations: Option[String] = {
-    migrations
-      .map(_.version)
-      .toSet
-      .size match {
-      case migrations.length => None
-      case _ => Some("There are some duplicated version in migrations, please make sure the version are identical")
+  def validateMigrations: List[String] = {
+    val identicalVersions =
+      migrations
+        .map(_.version)
+        .toSet
+        .size
+
+    if(identicalVersions == migrations.length)
+      Nil
+    else {
+      migrations
+        .groupBy(_.version)
+        .collect {
+          case (ves, items) if items.length > 1 => ves
+        }
+        .toList
     }
+
   }
 
   def migrate(targetVersion: Option[String]) = {
