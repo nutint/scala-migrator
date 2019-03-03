@@ -12,6 +12,11 @@ trait Migrator {
     */
   def migrations: List[Migration]
 
+  /**
+    * This method is for validate migration on the following criterias
+    *   - Duplicate version number
+    * @return
+    */
   def validateMigrations: Option[String] = {
     migrations
       .map(_.version)
@@ -29,8 +34,9 @@ trait Migrator {
     }
   }
 
-  def doMigration(targetVersion: String) = {
-    migrations.find()
-  }
+//  def doMigration(targetVersion: String) = {
+//    migrations.find(_.version == targetVersion)
+//      .
+//  }
 }
 
