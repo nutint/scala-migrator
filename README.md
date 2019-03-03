@@ -21,3 +21,5 @@ Zero downtime database migrator, this project is for Scala programmer to be able
 4. Step 3: Run migration script
 5. Step 4: Run Service version B (Which run only new migrated collection)
 6. Step 5: [Optional] Back up collection a
+
+Test PR
