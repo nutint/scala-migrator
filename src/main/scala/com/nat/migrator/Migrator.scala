@@ -65,11 +65,15 @@ trait Migrator {
   def findMigrationDirection(targetVersion: String, currentVersion: String, migrations: List[Migration]): Either[List[String],MigrationDirection] = {
     validateMigrations(migrations) match {
       case Nil => {
-        val targetVersionIndex = migrations.map(_.version).indexOf(targetVersion)
-        val currentVersionIndex = migrations.map(_.version).indexOf(currentVersion)
-        if( targetVersionIndex < currentVersionIndex ) Right(MigrationDirectionUp)
-        else if ( targetVersionIndex > currentVersionIndex ) Right(MigrationDirectionDown)
-        else Right(MigrationDirectionSame)
+        val migrationVersions = migrations.map(_.version)
+        val targetVersionIndex = migrationVersions.indexOf(targetVersion)
+        val currentVersionIndex = migrationVersions.indexOf(currentVersion)
+        (targetVersionIndex, currentVersionIndex) match {
+          case (-1, -1) | (-1, _) | (_, -1) => Left(List("Unable to find target version, or current version in migration list"))
+          case (tgv, crv) if tgv > crv => Right(MigrationDirectionUp)
+          case (tgv, crv) if tgv < crv => Right(MigrationDirectionDown)
+          case _ => Right(MigrationDirectionSame)
+        }
       }
       case errors => Left(errors)
     }
