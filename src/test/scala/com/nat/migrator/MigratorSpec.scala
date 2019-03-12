@@ -63,6 +63,7 @@ class MigratorSpec extends FreeSpec
         when(mockedMigration.version).thenReturn(versionNumber)
         mockedMigration
       }}
+      .reverse
       .toList
 
     object successMigrator extends Migrator {

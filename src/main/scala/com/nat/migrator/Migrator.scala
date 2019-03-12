@@ -70,8 +70,8 @@ trait Migrator {
         val currentVersionIndex = migrationVersions.indexOf(currentVersion)
         (targetVersionIndex, currentVersionIndex) match {
           case (-1, -1) | (-1, _) | (_, -1) => Left(List("Unable to find target version, or current version in migration list"))
-          case (tgv, crv) if tgv > crv => Right(MigrationDirectionUp)
-          case (tgv, crv) if tgv < crv => Right(MigrationDirectionDown)
+          case (tgv, crv) if tgv < crv => Right(MigrationDirectionUp)
+          case (tgv, crv) if tgv > crv => Right(MigrationDirectionDown)
           case _ => Right(MigrationDirectionSame)
         }
       }
