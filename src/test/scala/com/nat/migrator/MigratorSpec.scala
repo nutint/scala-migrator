@@ -145,6 +145,71 @@ class MigratorSpec extends FreeSpec
 
   }
 
+  type SideEffectFunction = () => Unit
+
+  val createMigration = (vs: String) => (onMigrationUp: SideEffectFunction) => new Migration {
+    override def version: String = vs
+    override def initSchemas(): Either[String, Unit] = Right(Unit)
+    override def deInitSchemas(): Either[String, Unit] = Right(Unit)
+    override def migrationUp(): Either[String, Unit] = {
+      onMigrationUp(); Right(Unit)
+    }
+    override def migrationDown(): Either[String, Unit] = {
+      println("do migration down")
+      Right(Unit)
+    }
+  }
+
+  val mockMigrator = (
+    migrateEffect: String => SideEffectFunction,
+    versions: List[String],
+    currentVersion: Option[String]) =>
+    new Migrator {
+      override def migrations: List[Migration] =
+        versions
+          .map(vs => createMigration(vs)(migrateEffect(vs)))
+      override def loadCurrentVersionNumber: Option[String] = currentVersion
+    }
+
+  "migrate" - {
+
+    "should migrate to the latest version if the not provide target version" in {
+
+      // Migrator1
+      var migrator1Log: List[String] = Nil
+
+      val migrator1Effects: String => SideEffectFunction = (version: String) => () => {
+        migrator1Log = migrator1Log :+ s"version $version migrated"
+        println(s"migrating to version $version")
+      }
+
+      val migrator1 = mockMigrator(
+        migrator1Effects,
+        (1 to 5).reverse.map(_.toString).map(v=>s"1.0.$v").toList,
+        Some("1.0.1")
+      )
+
+      // Migrator2
+      var migrator2Log: List[String] = Nil
+
+      val migrator2Effects: String => SideEffectFunction = (version: String) => () => {
+        migrator2Log = migrator2Log :+ s"version $version migrated"
+        println(s"migrating to version $version")
+      }
+
+      val migrator2 = mockMigrator(
+        migrator2Effects,
+        (1 to 5).reverse.map(_.toString).map(v=>s"1.0.$v").toList,
+        Some("1.0.1")
+      )
+
+      // Tests
+      migrator1.migrate(Some("1.0.5"))
+      migrator2.migrate(None)
+      assert(migrator1Log == migrator2Log)
+    }
+  }
+
   "Run sorted migration" - {
     "should success when there is no migration left in the list" in {
       val migrator = new Migrator {

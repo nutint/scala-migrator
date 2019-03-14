@@ -109,6 +109,7 @@ trait Migrator {
     * @return
     */
   def migrate(targetVersion: Option[String]): MigrationResult = {
+    println(s"migrating to version $targetVersion")
     targetVersion match {
       case None =>
         migrations
@@ -120,21 +121,22 @@ trait Migrator {
           .map { currentVer =>
             (currentVer, findMigrationDirection(tgv, currentVer, migrations))
           }
-          .map { tup =>
-            val currentVer = tup._1
-            findInterestedMigrations(migrations, tgv, currentVer)
-              .map { interestedMigration =>
-                tup._2 match {
-                  case Right(MigrationDirectionSame) => MigrationResultFailed(s"target version, and current version is the same (targetVersion = $targetVersion")
-                  case Right(MigrationDirectionUp) => runSortedMigration(interestedMigration.reverse, MigrationDirectionUp)
-                  case Right(MigrationDirectionDown) => runSortedMigration(interestedMigration, MigrationDirectionDown)
-                  case Left(errors) => MigrationResultFailed(s"Migration collection does not pass validation $errors")
+          .map {
+            case (_, Left(errors)) => MigrationResultFailed(s"Migration collection does not pass validation $errors")
+            case (currentVer, findDirectionResult) =>
+              findInterestedMigrations(migrations, tgv, currentVer)
+                .map { interestedMigration =>
+                  findDirectionResult match {
+                    case Right(MigrationDirectionSame) => MigrationResultFailed(s"target version, and current version is the same (targetVersion = $targetVersion")
+                    case Right(MigrationDirectionUp) => runSortedMigration(interestedMigration.reverse.tail, MigrationDirectionUp)
+                    case Right(MigrationDirectionDown) => runSortedMigration(interestedMigration.tail, MigrationDirectionDown)
+                    case Left(errors) => MigrationResultFailed(s"Migration collection does not pass validation $errors")
+                  }
                 }
-              }
-              .fold(
-                err => MigrationResultFailed(err),
-                identity
-              )
+                .fold(
+                  err => MigrationResultFailed(err),
+                  identity
+                )
           }
           .getOrElse(migrate(None))
     }
