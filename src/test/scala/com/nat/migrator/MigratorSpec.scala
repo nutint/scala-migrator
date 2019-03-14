@@ -145,33 +145,33 @@ class MigratorSpec extends FreeSpec
 
   }
 
-  type SideEffectFunction = () => Unit
-
-  val createMigration = (vs: String) => (onMigrationUp: SideEffectFunction) => new Migration {
-    override def version: String = vs
-    override def initSchemas(): Either[String, Unit] = Right(Unit)
-    override def deInitSchemas(): Either[String, Unit] = Right(Unit)
-    override def migrationUp(): Either[String, Unit] = {
-      onMigrationUp(); Right(Unit)
-    }
-    override def migrationDown(): Either[String, Unit] = {
-      println("do migration down")
-      Right(Unit)
-    }
-  }
-
-  val mockMigrator = (
-    migrateEffect: String => SideEffectFunction,
-    versions: List[String],
-    currentVersion: Option[String]) =>
-    new Migrator {
-      override def migrations: List[Migration] =
-        versions
-          .map(vs => createMigration(vs)(migrateEffect(vs)))
-      override def loadCurrentVersionNumber: Option[String] = currentVersion
-    }
-
   "migrate" - {
+
+    type SideEffectFunction = () => Unit
+
+    val createMigration = (vs: String) => (onMigrationUp: SideEffectFunction) => new Migration {
+      override def version: String = vs
+      override def initSchemas(): Either[String, Unit] = Right(Unit)
+      override def deInitSchemas(): Either[String, Unit] = Right(Unit)
+      override def migrationUp(): Either[String, Unit] = {
+        onMigrationUp(); Right(Unit)
+      }
+      override def migrationDown(): Either[String, Unit] = {
+        println("do migration down")
+        Right(Unit)
+      }
+    }
+
+    val mockMigrator = (
+                         migrateEffect: String => SideEffectFunction,
+                         versions: List[String],
+                         currentVersion: Option[String]) =>
+      new Migrator {
+        override def migrations: List[Migration] =
+          versions
+            .map(vs => createMigration(vs)(migrateEffect(vs)))
+        override def loadCurrentVersionNumber: Option[String] = currentVersion
+      }
 
     "should migrate to the latest version if the not provide target version" in {
 
@@ -207,6 +207,30 @@ class MigratorSpec extends FreeSpec
       migrator1.migrate(Some("1.0.5"))
       migrator2.migrate(None)
       assert(migrator1Log == migrator2Log)
+    }
+
+    "should fail when empty migration" in {
+      val migrator = mockMigrator(
+        (_: String) => ()=>Unit,
+        Nil,
+        None
+      )
+
+      assert(migrator.migrate(None) == MigrationResultFailed("Empty migration"))
+      assert(migrator.migrate(Some("do not cared")) == MigrationResultFailed("Empty migration"))
+    }
+
+    "should fail when target version, and current version is the same" in {
+      val migrator = mockMigrator(
+        (_: String) => ()=>Unit,
+        (1 to 5).reverse.map(_.toString).map(v=>s"1.0.$v").toList,
+        Some("1.0.5")
+      )
+
+      assert(
+        migrator.migrate(Some("1.0.5")) ==
+        MigrationResultFailed("target version, and current version is the same (currentVersion = 1.0.5)")
+      )
     }
   }
 

@@ -110,27 +110,23 @@ trait Migrator {
     */
   def migrate(targetVersion: Option[String]): MigrationResult = {
     println(s"migrating to version $targetVersion")
-    targetVersion match {
-      case None =>
-        migrations
-          .headOption
-          .map(tg => migrate(Some(tg.version)))
-          .getOrElse(MigrationResultFailed("Empty migration"))
-      case Some(tgv) =>
+    (migrations, targetVersion) match {
+      case (Nil, _ ) => MigrationResultFailed("Empty migration")
+      case (head :: _, None) => migrate(Some(head.version))
+      case (_, Some(tgv)) =>
         loadCurrentVersionNumber
           .map { currentVer =>
             (currentVer, findMigrationDirection(tgv, currentVer, migrations))
           }
           .map {
             case (_, Left(errors)) => MigrationResultFailed(s"Migration collection does not pass validation $errors")
-            case (currentVer, findDirectionResult) =>
+            case (currentVer, Right(direction)) =>
               findInterestedMigrations(migrations, tgv, currentVer)
                 .map { interestedMigration =>
-                  findDirectionResult match {
-                    case Right(MigrationDirectionSame) => MigrationResultFailed(s"target version, and current version is the same (targetVersion = $targetVersion")
-                    case Right(MigrationDirectionUp) => runSortedMigration(interestedMigration.reverse.tail, MigrationDirectionUp)
-                    case Right(MigrationDirectionDown) => runSortedMigration(interestedMigration.tail, MigrationDirectionDown)
-                    case Left(errors) => MigrationResultFailed(s"Migration collection does not pass validation $errors")
+                  direction match {
+                    case MigrationDirectionSame => MigrationResultFailed(s"target version, and current version is the same (currentVersion = $currentVer)")
+                    case MigrationDirectionUp => runSortedMigration(interestedMigration.reverse.tail, MigrationDirectionUp)
+                    case MigrationDirectionDown => runSortedMigration(interestedMigration.tail, MigrationDirectionDown)
                   }
                 }
                 .fold(
