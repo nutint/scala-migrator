@@ -180,7 +180,6 @@ class MigratorSpec extends FreeSpec
 
       val migrator1Effects: String => SideEffectFunction = (version: String) => () => {
         migrator1Log = migrator1Log :+ s"version $version migrated"
-        println(s"migrating to version $version")
       }
 
       val migrator1 = mockMigrator(
@@ -194,7 +193,6 @@ class MigratorSpec extends FreeSpec
 
       val migrator2Effects: String => SideEffectFunction = (version: String) => () => {
         migrator2Log = migrator2Log :+ s"version $version migrated"
-        println(s"migrating to version $version")
       }
 
       val migrator2 = mockMigrator(
@@ -231,6 +229,63 @@ class MigratorSpec extends FreeSpec
         migrator.migrate(Some("1.0.5")) ==
         MigrationResultFailed("target version, and current version is the same (currentVersion = 1.0.5)")
       )
+    }
+
+    "should also fail when the validation is not passed" in {
+      val migrator = new Migrator {
+        override def migrations: List[Migration] = List(mock[Migration])
+        override def loadCurrentVersionNumber: Option[String] = Some("xx")
+        override def findMigrationDirection(targetVersion: String, currentVersion: String, migrations: List[Migration]): Either[List[String], MigrationDirection] = Left(List("an error"))
+      }
+      assert(migrator.migrate(Some("xx")) == MigrationResultFailed(s"Migration collection does not pass validation List(an error)"))
+    }
+
+    "should fail when load current version returns None" in {
+
+      // Migrator1
+      var migrator1Log: List[String] = Nil
+
+      val migrator1Effects: String => SideEffectFunction = (version: String) => () => {
+        migrator1Log = migrator1Log :+ s"version $version migrated"
+      }
+
+      val migrator1 = mockMigrator(
+        migrator1Effects,
+        (1 to 5).reverse.map(_.toString).map(v=>s"1.0.$v").toList,
+        None // return None when get current version
+      )
+
+      assert(migrator1.migrate(Some("1.0.5")) == MigrationResultFailed("Unable to get current version"))
+    }
+
+    "should fail when unable to find interested version" in {
+      val migrator = new Migrator {
+        override def migrations: List[Migration] = List(mock[Migration])
+        override def loadCurrentVersionNumber: Option[String] = Some("1.0.0")
+        override def findInterestedMigrations(allMigrations: List[Migration], targetVersion: String, currentVersion: String): Either[String, List[Migration]] = Left("something wrong")
+        override def findMigrationDirection(targetVersion: String, currentVersion: String, migrations: List[Migration]): Either[List[String], MigrationDirection] = Right(MigrationDirectionSame)
+      }
+
+      assert(migrator.migrate(Some("1.0.0")) == MigrationResultFailed("something wrong"))
+    }
+
+    "should run migration down when target version's index is lower than current version" in {
+      var downWasRun = false
+      val sideEff: SideEffectFunction = () => Unit
+      val mockedMigrations: List[Migration] = (1 to 5).reverse.map(v => s"1.0.$v").map(v => createMigration(v)(sideEff)).toList
+      val migrator = new Migrator {
+        override def migrations: List[Migration] = mockedMigrations
+        override def loadCurrentVersionNumber: Option[String] = Some("1.0.5")
+        override def findInterestedMigrations(allMigrations: List[Migration], targetVersion: String, currentVersion: String): Either[String, List[Migration]] = Right(mockedMigrations)
+        override def findMigrationDirection(targetVersion: String, currentVersion: String, migrations: List[Migration]): Either[List[String], MigrationDirection] = Right(MigrationDirectionDown)
+        override def runMigrationDown(migration: Migration): MigrationResult = {
+          downWasRun = true
+          MigrationResultSuccess
+        }
+      }
+
+      migrator.migrate(Some("1.0.1"))
+      assert(downWasRun)
     }
   }
 

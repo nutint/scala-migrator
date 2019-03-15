@@ -109,7 +109,6 @@ trait Migrator {
     * @return
     */
   def migrate(targetVersion: Option[String]): MigrationResult = {
-    println(s"migrating to version $targetVersion")
     (migrations, targetVersion) match {
       case (Nil, _ ) => MigrationResultFailed("Empty migration")
       case (head :: _, None) => migrate(Some(head.version))
