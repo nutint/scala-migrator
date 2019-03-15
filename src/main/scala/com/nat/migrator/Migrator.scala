@@ -134,7 +134,7 @@ trait Migrator {
                   identity
                 )
           }
-          .getOrElse(migrate(None))
+          .getOrElse(MigrationResultFailed("Unable to get current version"))
     }
   }
 
