@@ -7,7 +7,12 @@ version := "1.0"
 
 scalaVersion := "2.12.2"
 
+lazy val scalaTestVersion = "3.0.5"
+
 libraryDependencies ++= Seq(
+  "org.scalactic" %% "scalactic" % scalaTestVersion % "test",
+  "org.scalatest" %% "scalatest" % scalaTestVersion % "test",
+  "org.mockito" % "mockito-all" % "1.8.4" % "test"
 )
 
 

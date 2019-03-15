@@ -1,0 +1,7 @@
+package com.nat.migrator.model
+
+sealed trait MigrationDirection
+sealed trait MigrationDirectionDifferent extends MigrationDirection
+case object MigrationDirectionUp extends MigrationDirectionDifferent
+case object MigrationDirectionDown extends MigrationDirectionDifferent
+case object MigrationDirectionSame extends MigrationDirection
